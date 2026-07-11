@@ -127,7 +127,7 @@ using DeBRief, DataFrames
 
 df = fetch_vde(state = "PE",
                municipality = ["Recife", "Petrolina", "Caruaru"],
-               year = 2023, typology = "roubo de veículo",
+               year = 2023, typology = "homicídio doloso",
                granularity = :year, relative = true)
 
 sort(select(df, :municipality, :value, :rate_100k), :rate_100k, rev = true)
@@ -136,6 +136,12 @@ sort(select(df, :municipality, :value, :rate_100k), :rate_100k, rev = true)
 Municipality names are matched ignoring case and accents. Names are **not
 unique across Brazilian states** — combine with `state`, or pass 7-digit IBGE
 codes (`municipality = [2611101]`), to disambiguate.
+
+> **Municipal coverage varies.** Some states report some indicators only as
+> state totals (`municipality = "NÃO INFORMADO"`) — e.g. PE reports vehicle
+> robbery this way in 2023. A municipality filter on such an indicator
+> returns no rows, and DeBRief warns you to drop the filter for the state
+> aggregate.
 
 ## Data sources and caveats
 

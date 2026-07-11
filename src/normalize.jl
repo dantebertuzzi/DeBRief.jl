@@ -110,6 +110,10 @@ const VDE_TYPOLOGIES = [
     Typology("Morte no trânsito ou em decorrência dele (exceto homicídio doloso)", "victims", :victims),
     Typology("Suicídio", "victims", :victims),
     Typology("Estupro", "victims", :victims),
+    # Indicadores desmembrados/adicionados em publicações recentes do VDE
+    # (aparecem a partir de ~2023; descobertos por inspeção do bancovde-2023)
+    Typology("Estupro de vulnerável", "victims", :victims),
+    Typology("Mortes no trânsito", "victims", :victims),
     Typology("Morte de Agente do Estado", "state_agents", :victims),
     Typology("Suicídio de Agente do Estado", "state_agents", :victims),
     Typology("Roubo de veículo", "occurrences", :occurrences),
@@ -159,9 +163,13 @@ const VDE_ALIASES = Dict{String,String}(
     "roubo seguido de morte" => "Roubo seguido de morte (latrocínio)",
     "latrocinio" => "Roubo seguido de morte (latrocínio)",
     "morte por intervencao de agente do estado" => "Morte por intervenção de Agente do Estado",
-    # Singular/plural
+    # Singular/plural e variantes "automotor" (vistas em painéis do MJSP)
     "roubo de veiculos" => "Roubo de veículo",
     "furto de veiculos" => "Furto de veículo",
+    "roubo de veiculo automotor" => "Roubo de veículo",
+    "roubo de veiculos automotores" => "Roubo de veículo",
+    "furto de veiculo automotor" => "Furto de veículo",
+    "furto de veiculos automotores" => "Furto de veículo",
     "emissao de alvara de licenca" => "Emissão de Alvarás de licença",
     "emissao de alvaras de licenca" => "Emissão de Alvarás de licença",
 )

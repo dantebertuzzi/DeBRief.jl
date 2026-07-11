@@ -331,14 +331,31 @@ function _assemble_vde(paths::Dict{Int,String};
     munkeys = _municipality_keys(municipality; progress)
 
     parts = DataFrame[]
+    # Vocabulário visto no recorte ANTES do filtro de tipologia — usado no
+    # diagnóstico de "filtro válido, zero linhas" (deriva de vocabulário)
+    seen = Set{String}()
+    # Tipologias que só aparecem como agregado estadual (municipio =
+    # "NÃO INFORMADO") — cobertura municipal varia por UF/indicador/ano
+    state_only = Set{String}()
     for (y, p) in sort(collect(paths); by = first)
         progress && @info "DeBRief: parsing $(basename(p)) (large years can take a minute)"
         d = _parse_vde(p, y)
         # Ordem dos filtros: dos mais seletivos/baratos para os mais caros
         years !== nothing && subset!(d, :date => ByRow(dt -> Dates.year(dt) in years))
         states !== nothing && subset!(d, :state => ByRow(in(states)))
-        munkeys !== nothing &&
+        if munkeys !== nothing
+            # Antes de filtrar: registra tipologias reportadas apenas como
+            # agregado estadual, para o diagnóstico de zero linhas abaixo
+            ni = Set(m for m in unique(d.municipality)
+                     if normalize_key(m) == "nao informado")
+            if !isempty(ni)
+                nityps = unique(d.typology[map(in(ni), d.municipality)])
+                union!(state_only,
+                       typs === nothing ? nityps : intersect(nityps, typs))
+            end
             subset!(d, :municipality => ByRow(m -> normalize_key(m) in munkeys))
+        end
+        typs !== nothing && union!(seen, unique(d.typology))
         typs !== nothing && subset!(d, :typology => ByRow(in(typs)))
         cats !== nothing && subset!(d, :category => ByRow(in(cats)))
         push!(parts, d)
@@ -346,6 +363,27 @@ function _assemble_vde(paths::Dict{Int,String};
         length(paths) > 1 && GC.gc()
     end
     df = reduce(vcat, parts)
+
+    # Diagnósticos de "filtro válido, zero linhas", do mais específico ao
+    # mais genérico. Em vez de devolver 0 linhas mudo, explicamos o motivo.
+    if nrow(df) == 0
+        if munkeys !== nothing && !isempty(state_only)
+            # Caso real observado: PE/2023 reporta crimes de veículo só como
+            # total estadual (municipio = "NÃO INFORMADO")
+            @warn "DeBRief: in this slice the requested indicator(s) are " *
+                  "reported only as STATE-level totals (municipality = " *
+                  "\"NÃO INFORMADO\"): " * join(sort(collect(state_only)), ", ") *
+                  ". Municipal coverage varies by state/indicator/year in the " *
+                  "VDE. Drop the `municipality` filter to get the state aggregate."
+        elseif typs !== nothing && !isempty(seen)
+            @warn "DeBRief: the typology filter matched no rows in this slice. " *
+                  "The year's file may spell the indicator differently " *
+                  "(vocabulary drift). Indicators present in the slice:\n  " *
+                  join(sort(collect(seen)), "\n  ") *
+                  "\nIf you spot a variant of what you asked for, please open " *
+                  "an issue so it can be added to DeBRief.VDE_ALIASES."
+        end
+    end
 
     # Nomes de municípios NÃO são únicos no Brasil (ex.: "Bom Jesus" existe
     # em cinco UFs) e a fonte não traz código IBGE — avisa quando o filtro
@@ -394,7 +432,10 @@ Raw annual spreadsheets are cached on disk (see [`clear_cache`](@ref)).
 - `municipality`: municipality name(s) or IBGE code(s). Municipality **names
   are not unique across Brazil**; the source files carry no IBGE code, so a
   name filter may match several states — combine with `state`, or pass IBGE
-  codes, to disambiguate.
+  codes, to disambiguate. Note that **municipal coverage varies**: some
+  states report some indicators only as state totals, with municipality
+  `"NÃO INFORMADO"` (e.g. vehicle robbery/theft in PE, 2023) — a municipality
+  filter then returns no rows, and a warning explains why.
 - `year`: `Int`, `Vector{Int}` or range within $(VDE_FIRST_YEAR)–present.
 - `typology`: canonical indicator name(s); matching is case- and
   accent-insensitive (`"homicidio doloso"` works). See [`typologies`](@ref).

@@ -36,6 +36,10 @@ fetch_vde(
   across Brazil**; if a name matches cities in more than one state, DeBRief
   warns you to add `state` or switch to codes. Code resolution uses an
   IBGE registry fetched (and cached) from SIDRA.
+- **Municipal coverage varies.** Some states report some indicators only
+  as state totals (`municipality = "NÃO INFORMADO"`) — e.g. PE reports
+  vehicle robbery this way in 2023. A municipality filter then returns no
+  rows, with a warning telling you to drop the filter for the state total.
 - **`typology`** matches the canonical names from [`typologies`](@ref);
   spelling variants used by the government across years are harmonized
   automatically. Unknown values raise an error that lists all options.

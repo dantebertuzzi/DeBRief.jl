@@ -101,7 +101,12 @@ municipality names are not unique across states. DeBRief:
   derived from the IBGE/SIDRA municipal population table (cached on disk);
 - resolves codes by normalized name + UF for the geo extension join, marking
   unresolved rows with `missing` geometry (name spelling in Sinesp files
-  occasionally diverges from the IBGE registry).
+  occasionally diverges from the IBGE registry);
+- **keeps state-total rows**: some states report some indicators only as a
+  state aggregate, with `municipality = "NÃO INFORMADO"` (observed: vehicle
+  robbery/theft, cargo robbery and others in PE, 2023). These rows are
+  preserved as published; a municipality filter that would silently exclude
+  the requested indicator triggers an explanatory warning instead.
 
 ## 6. Rates per 100k inhabitants
 

@@ -31,6 +31,12 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
               "Roubo seguido de morte (latrocínio)"
         @test DeBRief.match_typology("apreensao de arma de fogo", :vde) ==
               "Arma de Fogo Apreendida"
+        @test DeBRief.match_typology("Roubo de veículo automotor", :vde) ==
+              "Roubo de veículo"
+        @test DeBRief.match_typology("estupro de vulneravel", :vde) ==
+              "Estupro de vulnerável"
+        @test DeBRief.match_typology("MORTES NO TRÂNSITO", :vde) ==
+              "Mortes no trânsito"
         err = try DeBRief.match_typology("crime inexistente", :vde); nothing
               catch e; e end
         @test err isa ArgumentError
@@ -95,6 +101,19 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
         furto = subset(df, :typology => ByRow(==("Furto de veículo")))
         @test furto.date[1] == Date(2023, 7, 1)
 
+        # Variante "automotor" do arquivo é normalizada para o canônico
+        fsa = subset(df, :municipality => ByRow(==("Feira de Santana")))
+        @test nrow(fsa) == 1 && fsa.typology[1] == "Roubo de veículo"
+        @test fsa.measure[1] === :occurrences && fsa.value[1] == 58
+
+        # Indicadores novos (2023+) saem canônicos, não como "other"
+        vul = subset(df, :typology => ByRow(==("Estupro de vulnerável")))
+        @test nrow(vul) == 1 && vul.category[1] == "victims"
+
+        # Linhas de agregado estadual (municipio "NÃO INFORMADO") são mantidas
+        ni = subset(df, :municipality => ByRow(==("NÃO INFORMADO")))
+        @test nrow(ni) == 2 && all(==("Roubo de carga"), ni.typology)
+
         # Indicador desconhecido é preservado com categoria "other"
         novo = subset(df, :typology => ByRow(==("Indicador Novo Hipotético")))
         @test nrow(novo) == 1 && novo.category[1] == "other" && novo.value[1] == 42
@@ -150,6 +169,22 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
         mun = DeBRief._assemble_vde(VDE_FIXTURE; state = "PE",
                                     municipality = "petrolina", progress = false)
         @test all(==("Petrolina"), mun.municipality)
+
+        # Aviso direcionado: indicador só-estadual + filtro municipal = 0 linhas
+        @test_logs (:warn, r"STATE-level totals") match_mode = :any begin
+            out = DeBRief._assemble_vde(VDE_FIXTURE; state = "PE",
+                                        municipality = "Recife",
+                                        typology = "roubo de carga",
+                                        progress = false)
+            @test nrow(out) == 0
+        end
+        # Aviso de deriva de vocabulário: tipologia canônica ausente do recorte
+        @test_logs (:warn, r"matched no rows") match_mode = :any begin
+            out = DeBRief._assemble_vde(VDE_FIXTURE; state = "PE",
+                                        typology = "Tráfico de drogas",
+                                        progress = false)
+            @test nrow(out) == 0
+        end
 
         @test_throws ArgumentError DeBRief._assemble_vde(VDE_FIXTURE;
                                                          state = "ZZ", progress = false)
