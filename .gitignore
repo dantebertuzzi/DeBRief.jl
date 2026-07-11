@@ -1,0 +1,7 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+MLproject
+Manifest.toml
+docs/build/
+test_local.jl

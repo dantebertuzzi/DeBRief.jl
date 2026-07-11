@@ -1,0 +1,6 @@
+[deps]
+DeBRief = "55108b8c-454b-4195-8bff-1613e9ee90b5"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+
+[compat]
+Documenter = "1"

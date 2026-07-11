@@ -1,0 +1,43 @@
+name = "DeBRief"
+uuid = "55108b8c-454b-4195-8bff-1613e9ee90b5"
+authors = ["Dante Bertuzzi and contributors"]
+version = "0.1.0"
+
+[deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Downloads = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+PooledArrays = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+Scratch = "6c6a2e73-6563-6170-7368-637461726353"
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
+
+[weakdeps]
+GeoDataFrames = "62cb38b5-d8d2-4862-a48e-6a340996859f"
+
+[extensions]
+DeBRiefGeoExt = "GeoDataFrames"
+
+[compat]
+Aqua = "0.8"
+DataFrames = "1"
+Dates = "1"
+Downloads = "1"
+GeoDataFrames = "0.3, 0.4, 0.5"
+PooledArrays = "1"
+Random = "1"
+Scratch = "1"
+Serialization = "1"
+Test = "1"
+Unicode = "1"
+XLSX = "0.9, 0.10"
+julia = "1.10"
+
+[extras]
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Aqua", "Random", "Test"]
