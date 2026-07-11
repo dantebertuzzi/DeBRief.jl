@@ -1,6 +1,6 @@
 # Ganchos de integração geoespacial. A implementação real vive na extensão
 # DeBRiefGeoExt (ext/DeBRiefGeoExt.jl), carregada automaticamente quando o
-# usuário faz `using GeoDataFrames` — padrão de weak dependency para manter
+# usuário faz `using GeoJSON` — padrão de weak dependency para manter
 # o core do pacote sem dependências geoespaciais.
 
 """
@@ -11,9 +11,9 @@ The fallback method below only reports how to enable the feature; the real
 implementation is provided by the `DeBRiefGeoExt` package extension.
 """
 function _attach_geometry(df, level)
-    error("DeBRief: `geometry = true` requires the GeoDataFrames package. " *
-          "Install it (`] add GeoDataFrames`) and load it before fetching:\n" *
-          "    using GeoDataFrames, DeBRief\n" *
+    error("DeBRief: `geometry = true` requires the GeoJSON package. " *
+          "Install it (`] add GeoJSON`) and load it before fetching:\n" *
+          "    using GeoJSON, DeBRief\n" *
           "This activates the DeBRiefGeoExt package extension.")
 end
 

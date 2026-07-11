@@ -64,24 +64,61 @@ with_theme(theme_dark()) do  # or your Dracula theme of choice
 end
 ```
 
-## Example 2 — choropleth of robbery-followed-by-death rate by state
+## Example 2 — choropleth of latrocínio rate by state (classic series, ≤ 2022)
 
-Loading `GeoDataFrames` activates the package extension, enabling
-`geometry = true` (IBGE meshes, cached on disk):
+Loading `GeoJSON` activates the package extension, enabling
+`geometry = true` (IBGE meshes, cached on disk). The **classic** series is
+already state-level, so `geometry = true` joins the state meshes directly:
 
 ```julia
-using GeoDataFrames, DeBRief, CairoMakie
+using GeoJSON, DeBRief, CairoMakie
 
 df = fetch_sinesp(year = 2022, typology = "latrocínio",
                   granularity = :year, relative = true, geometry = true)
 
 fig = Figure(size = (800, 800))
-ax = Axis(fig[1, 1]; title = "Latrocínio per 100k inhabitants — 2022", aspect = DataAspect())
+ax = Axis(fig[1, 1]; title = "Latrocínio per 100k inhabitants — 2022 (classic Sinesp)",
+          aspect = DataAspect())
 hidedecorations!(ax); hidespines!(ax)
 poly!(ax, df.geometry; color = df.rate_100k, colormap = :magma)
 Colorbar(fig[1, 2]; colormap = :magma, limits = extrema(skipmissing(df.rate_100k)))
-save("latrocinio_uf.png", fig; px_per_unit = 2)
+save("latrocinio_uf_2022.png", fig; px_per_unit = 2)
 ```
+
+## Example 2b — same map for a year after 2022 (VDE, aggregated to state)
+
+The classic series ends in **2022**; for later years use `fetch_vde`. But
+the VDE is **municipality-level**, so a state map needs an explicit
+aggregation — sum municipalities per state, then attach the state mesh:
+
+```julia
+using GeoJSON, DeBRief, DataFrames, CairoMakie
+
+# Latrocínio victims per state in 2025 (summed from municipalities) + rate
+mun = fetch_vde(year = 2025, typology = "latrocínio",
+                granularity = :year, refresh = true)   # 2025 is revised often
+uf  = combine(groupby(mun, :state), :value => sum ∘ skipmissing => :value)
+
+pop = DeBRief._population_by_uf(2025; progress = false)
+uf.rate_100k = [uf.value[i] / pop[uf.state[i]] * 100_000 for i in 1:nrow(uf)]
+
+# Attach the IBGE state mesh (same internal mechanism as the geo extension)
+uf = DeBRief._attach_geometry(uf, :state)
+
+ok = subset(uf, :geometry => ByRow(!ismissing))
+fig = Figure(size = (800, 800))
+ax = Axis(fig[1, 1]; title = "Latrocínio per 100k inhabitants — 2025 (Sinesp-VDE)",
+          aspect = DataAspect())
+hidedecorations!(ax); hidespines!(ax)
+poly!(ax, ok.geometry; color = Float64.(coalesce.(ok.rate_100k, NaN)), colormap = :magma)
+Colorbar(fig[1, 2]; colormap = :magma, limits = extrema(skipmissing(uf.rate_100k)))
+save("latrocinio_uf_2025.png", fig; px_per_unit = 2)
+```
+
+> **Note.** `fetch_sinesp` (2022, **occurrences**) and `fetch_vde` (2025,
+> **victims**) are different measurement rulers, not one continuous series —
+> do not put the two maps side by side as if comparable. This is the same
+> methodological break the package refuses to paper over.
 
 ## Example 3 — comparing municipalities within a state
 

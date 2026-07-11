@@ -156,7 +156,6 @@ const VDE_ALIASES = Dict{String,String}(
     "morte a esclarecer (sem indicio de crime)" => "Mortes a esclarecer (sem indício de crime)",
     "morte a esclarecer" => "Mortes a esclarecer (sem indício de crime)",
     "morte no transito ou em decorrencia dele" => "Morte no trânsito ou em decorrência dele (exceto homicídio doloso)",
-    "mortes no transito" => "Morte no trânsito ou em decorrência dele (exceto homicídio doloso)",
     "roubo seguido de morte" => "Roubo seguido de morte (latrocínio)",
     "latrocinio" => "Roubo seguido de morte (latrocínio)",
     "morte por intervencao de agente do estado" => "Morte por intervenção de Agente do Estado",

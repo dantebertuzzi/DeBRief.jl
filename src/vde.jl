@@ -405,7 +405,7 @@ Raw annual spreadsheets are cached on disk (see [`clear_cache`](@ref)).
   interpolation in v0.1.0). Rows whose population cannot be resolved get
   `missing`.
 - `geometry`: when `true`, joins IBGE municipal meshes; requires loading
-  GeoDataFrames first (`using GeoDataFrames`) to activate the package
+  GeoJSON first (`using GeoJSON`) to activate the package
   extension.
 - `refresh`: force re-download of the cached spreadsheets (useful for the
   current year, which is updated monthly).

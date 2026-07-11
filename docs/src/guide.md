@@ -95,20 +95,47 @@ Details you should know for serious work:
 ## Maps (geo extension)
 
 The core package has no geospatial dependencies. Loading
-[GeoDataFrames.jl](https://github.com/evetion/GeoDataFrames.jl) activates a
+[GeoJSON.jl](https://github.com/JuliaGeo/GeoJSON.jl) activates a
 package extension that enables `geometry = true`, joining official IBGE
 meshes (cached on disk):
 
 ```julia
-using GeoDataFrames, DeBRief   # a ordem não importa; ambos carregados
+using GeoJSON, DeBRief   # a ordem não importa; ambos carregados
 
+# Classic series is state-level → geometry = true joins the state meshes
 uf = fetch_sinesp(year = 2022, typology = "latrocínio",
                   granularity = :year, relative = true, geometry = true)
 # → coluna extra `geometry`, pronta para poly!() no Makie
 ```
 
-For `fetch_vde`, geometry is municipal; rows whose municipality name cannot
-be matched to the IBGE registry get `missing` geometry (with a warning).
+For `fetch_vde`, geometry is **municipal**; rows whose municipality name
+cannot be matched to the IBGE registry get `missing` geometry (with a
+warning).
+
+### State maps from VDE (years after 2022)
+
+The classic series stops in 2022. For a **state** choropleth of a later
+year, aggregate the municipal VDE data to UF level yourself, then attach the
+state mesh via the same helper the extension uses:
+
+```julia
+using GeoJSON, DeBRief, DataFrames
+
+mun = fetch_vde(year = 2025, typology = "latrocínio",
+                granularity = :year, refresh = true)
+uf  = combine(groupby(mun, :state), :value => sum ∘ skipmissing => :value)
+
+pop = DeBRief._population_by_uf(2025; progress = false)
+uf.rate_100k = [uf.value[i] / pop[uf.state[i]] * 100_000 for i in 1:nrow(uf)]
+
+uf = DeBRief._attach_geometry(uf, :state)   # anexa a malha estadual
+```
+
+!!! warning "Different rulers"
+    A `fetch_sinesp` map (occurrences, ≤ 2022) and a `fetch_vde` map
+    (victims, ≥ 2023) measure different things. Label the source on each
+    panel and never present them as one continuous series — see
+    [Data harmonization](@ref).
 
 ## The disk cache
 

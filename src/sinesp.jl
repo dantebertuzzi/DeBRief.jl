@@ -114,7 +114,7 @@ The raw spreadsheet is cached on disk (see [`clear_cache`](@ref)).
 Keyword arguments mirror [`fetch_vde`](@ref) (no `municipality`/`category`:
 this series is state-level with a single unit of measure). With
 `relative = true`, `rate_100k` uses IBGE/SIDRA state population estimates.
-With `geometry = true` (requires `using GeoDataFrames`), IBGE state meshes
+With `geometry = true` (requires `using GeoJSON`), IBGE state meshes
 are joined.
 
 # Output schema
