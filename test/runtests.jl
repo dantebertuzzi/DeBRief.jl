@@ -225,9 +225,18 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
         @test length(uf_rows) == 3                 # objeto-cabeçalho descartado
         @test (code = "26", name = "Pernambuco", value = 9058931) in uf_rows
 
+        # Validação de integridade: fixture íntegra passa; truncada, não
+        whole = read(joinpath(FIX, "sidra_mun_fixture.json"), String)
+        @test DeBRief._sidra_ok(whole)
+        @test !DeBRief._sidra_ok(first(whole, length(whole) ÷ 2))  # truncada
+        @test !DeBRief._sidra_ok("Tabela 6579: parâmetro inválido")
+
         mun_rows = DeBRief._parse_sidra(read(joinpath(FIX, "sidra_mun_fixture.json"), String))
         @test length(mun_rows) == 5
-        @test DeBRief._split_mun_name("Petrolina (PE)") == ("Petrolina", "PE")
+        @test DeBRief._mun_name_uf("2611101", "Petrolina (PE)") == ("Petrolina", "PE")
+        @test DeBRief._mun_name_uf("2611101", "Petrolina - PE") == ("Petrolina", "PE")
+        @test DeBRief._mun_name_uf("2611101", "Petrolina") == ("Petrolina", "PE")
+        @test DeBRief._mun_name_uf("3550308", "São Paulo") == ("São Paulo", "SP")
 
         # _add_rate! com lookup injetado (sem rede)
         df = DeBRief._assemble_vde(VDE_FIXTURE; state = "PE", municipality = "Recife",

@@ -39,12 +39,26 @@ function _parse_sidra(json::AbstractString)
     return out
 end
 
-# Extrai (nome, UF) de um D1N municipal do SIDRA, ex.: "Petrolina (PE)"
-function _split_mun_name(d1n::AbstractString)
-    m = match(r"^(.*?)\s*\(([A-Z]{2})\)\s*$", strip(d1n))
-    m === nothing && return (strip(d1n), "")
-    return (String(m.captures[1]), String(m.captures[2]))
+# Extrai (nome, UF) de uma linha municipal do SIDRA. A UF vem dos dois
+# primeiros dígitos do CÓDIGO IBGE (D1C) — o formato do nome (D1N) varia
+# entre tabelas do apisidra ("Petrolina (PE)", "Petrolina - PE" ou só
+# "Petrolina"), então não dependemos dele: apenas removemos o sufixo de UF
+# do nome, se houver.
+function _mun_name_uf(code::AbstractString, d1n::AbstractString)
+    prefix = tryparse(Int, String(first(strip(code), 2)))
+    uf = prefix === nothing ? "" : get(UF_CODE_TO_ABBREV, prefix, "")
+    name = replace(strip(d1n),
+                   r"\s*\([A-Z]{2}\)\s*$" => "",
+                   r"\s*[-\u2013]\s*[A-Z]{2}\s*$" => "")
+    return (String(name), uf)
 end
+
+# Resposta íntegra do apisidra: contém dados (D1C) E o array fecha ("]").
+# Um download truncado (servidor encerra com 200 + corpo parcial) contém o
+# header com "D1C" mas não fecha o array — era cacheado como válido e
+# envenenava o lookup para sempre (municípios do fim do array sumiam).
+_sidra_ok(json::AbstractString) =
+    occursin("\"D1C\"", json) && endswith(rstrip(json), "]")
 
 """
     _population(level, year; progress = true) -> Vector{NamedTuple}
@@ -59,16 +73,20 @@ function _population(level::Symbol, year::Integer; progress::Bool = true)
     # para todos os anos (2022 é Censo) nem para anos ainda não fechados.
     for (i, y) in enumerate((year, year - 1, year + 1, year - 2))
         dest = cache_path("population", "sidra_$(level)_$(y).json")
-        json = ""
-        if isfile(dest)
-            json = read(dest, String)
-        else
+        json = isfile(dest) ? read(dest, String) : ""
+        if !isempty(json) && !_sidra_ok(json)
+            # Autocura: cache truncado por download interrompido — descarta
+            @warn "DeBRief: cached SIDRA file $(basename(dest)) is truncated; re-downloading."
+            rm(dest; force = true)
+            json = ""
+        end
+        if isempty(json)
             try
                 _download(_sidra_url(level, y), dest;
                           cfg = DownloadConfig(; progress, min_size = 64))
                 json = read(dest, String)
-                # Só mantém no cache respostas que realmente têm dados
-                if !occursin("\"D1C\"", json)
+                # Só mantém no cache respostas íntegras e com dados
+                if !_sidra_ok(json)
                     rm(dest; force = true)
                     json = ""
                 end
@@ -101,7 +119,7 @@ function _population_by_municipality(year::Integer; progress::Bool = true)
     rows = _population(:municipality, year; progress)
     d = Dict{String,Int}()
     for r in rows
-        name, uf = _split_mun_name(r.name)
+        name, uf = _mun_name_uf(r.code, r.name)
         isempty(uf) && continue
         d[normalize_key(name) * "|" * uf] = r.value
     end
@@ -125,7 +143,7 @@ function _municipality_lookup(; progress::Bool = true)
     for r in rows
         code = tryparse(Int, r.code)
         code === nothing && continue
-        name, uf = _split_mun_name(r.name)
+        name, uf = _mun_name_uf(r.code, r.name)
         isempty(uf) && continue
         bycode[code] = (name, uf)
         byname[normalize_key(name) * "|" * uf] = code

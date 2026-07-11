@@ -54,6 +54,8 @@ const UF_ABBREVS = Set(first.(UF_TABLE))
 const UF_NAME_TO_ABBREV = Dict(normalize_key(n) => a for (a, n, _) in UF_TABLE)
 # sigla -> código IBGE ("PE" => 26)
 const UF_ABBREV_TO_CODE = Dict(a => c for (a, _, c) in UF_TABLE)
+# código IBGE -> sigla (26 => "PE"); prefixo de 2 dígitos do código municipal
+const UF_CODE_TO_ABBREV = Dict(c => a for (a, _, c) in UF_TABLE)
 
 """
     _resolve_uf(x) -> String
