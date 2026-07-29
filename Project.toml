@@ -1,7 +1,7 @@
 name = "DeBRief"
 uuid = "55108b8c-454b-4195-8bff-1613e9ee90b5"
 authors = ["Dante Bertuzzi and contributors"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
