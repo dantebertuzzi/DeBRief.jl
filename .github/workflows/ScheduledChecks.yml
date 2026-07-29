@@ -1,0 +1,71 @@
+name: Scheduled checks
+on:
+  schedule:
+    # Toda segunda-feira às 06:00 UTC.
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  # Roda a suíte com DEBRIEF_ONLINE_TESTS=true: baixa de verdade da Sinesp-VDE
+  # e da Sinesp clássica (fetch_vde/fetch_sinesp) e confere que os dados
+  # voltam com o formato esperado. Pega tanto link quebrado quanto mudança de
+  # estrutura nas planilhas publicadas pelo MJSP.
+  sinesp-links:
+    name: Fontes da Sinesp ainda respondem?
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Roda a suíte com DEBRIEF_ONLINE_TESTS=true (com retry)
+        env:
+          DEBRIEF_ONLINE_TESTS: "true"
+        run: |
+          for attempt in 1 2 3; do
+            julia --project -e 'using Pkg; Pkg.test()' && exit 0
+            echo "Tentativa $attempt falhou; aguardando antes de tentar de novo…"
+            sleep 30
+          done
+          exit 1
+
+  # scripts/testes/verifica_links.jl varre o README e os .md da documentação
+  # atrás de URLs (http/https/ftp) e confere se ainda respondem.
+  verifica-links-docs:
+    name: Links citados no README e na documentação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: scripts/testes/verifica_links.jl (com retry)
+        run: |
+          for attempt in 1 2 3; do
+            julia --project scripts/testes/verifica_links.jl && exit 0
+            echo "Tentativa $attempt falhou; aguardando antes de tentar de novo…"
+            sleep 30
+          done
+          exit 1
+
+  # Atualiza as dependências (DataFrames.jl, XLSX.jl, PooledArrays.jl, ...)
+  # para as versões mais recentes compatíveis e roda a suíte offline contra
+  # elas — pega quebra de API em pacotes de terceiros antes de um usuário
+  # sentir o problema.
+  latest-deps:
+    name: Testes com dependências mais recentes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
+      - name: Atualiza dependências para as versões mais recentes compatíveis
+        run: julia --project -e 'using Pkg; Pkg.update()'
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1

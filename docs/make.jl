@@ -14,7 +14,7 @@ makedocs(
     sitename = "DeBRief.jl",
     checkdocs = :exports,
     format = Documenter.HTML(
-        canonical = "https://USERNAME.github.io/DeBRief.jl",
+        canonical = "https://dantebertuzzi.github.io/DeBRief.jl",
         edit_link = "main",
         prettyurls = get(ENV, "CI", "false") == "true",
     ),
@@ -28,4 +28,4 @@ makedocs(
     ],
 )
 
-deploydocs(repo = "github.com/USERNAME/DeBRief.jl", devbranch = "main")
+deploydocs(repo = "github.com/dantebertuzzi/DeBRief.jl", devbranch = "main")

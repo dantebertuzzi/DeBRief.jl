@@ -1,10 +1,10 @@
 # DeBRief.jl
 
-[![CI](https://github.com/USERNAME/DeBRief.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/USERNAME/DeBRief.jl/actions/workflows/CI.yml)
+[![CI](https://github.com/dantebertuzzi/DeBRief.jl/actions/workflows/CI.yml/badge.svg)](https://github.com/dantebertuzzi/DeBRief.jl/actions/workflows/CI.yml)
 [![version](https://juliahub.com/docs/General/DeBRief/stable/version.svg)](https://juliahub.com/ui/Packages/General/DeBRief)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![docs: stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://USERNAME.github.io/DeBRief.jl/stable/)
-[![docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://USERNAME.github.io/DeBRief.jl/dev/)
+[![docs: stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://dantebertuzzi.github.io/DeBRief.jl/stable/)
+[![docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://dantebertuzzi.github.io/DeBRief.jl/dev/)
 
 *A debrief on Brazilian crime data — with **BR** right in the middle.*
 
@@ -148,7 +148,7 @@ codes (`municipality = [2611101]`), to disambiguate.
 - **Origin.** Data are reported by state statistics managers to the MJSP via
   the Sinesp VDE (Validador de Dados Estatísticos) and published as annual
   spreadsheets on [gov.br](https://www.gov.br/mj/pt-br/assuntos/sua-seguranca/seguranca-publica/estatistica)
-  and on the [MJSP open-data portal](https://dados.mj.gov.br/dataset/sistema-nacional-de-estatisticas-de-seguranca-publica).
+  and on the [MJSP open-data portal](https://www.gov.br/mj/pt-br/acesso-a-informacao/dados-abertos/ocorrencias-criminais-sinesp).
   Figures reflect each state's data-entry status at extraction time and are
   revised retroactively; use `refresh = true` or `clear_cache()` to pick up
   republished files.
