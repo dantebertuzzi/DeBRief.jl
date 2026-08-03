@@ -2,10 +2,14 @@
 #
 # LAYOUT DO ARQUIVO (inspecionado em julho/2026)
 # ----------------------------------------------
-# Recurso CKAN estável no portal de dados abertos do MJSP:
-#   https://dados.mj.gov.br/dataset/210b9ae2-21fc-4986-89c6-2006eb4db247/
-#     resource/feeae05e-faba-406c-8a4a-512aec91a9d1/download/
-#     indicadoressegurancapublicauf.xlsx
+# Recurso original: dataset 210b9ae2-21fc-4986-89c6-2006eb4db247, resource
+# feeae05e-faba-406c-8a4a-512aec91a9d1, no antigo portal do MJSP
+# (dados.mj.gov.br). Esse domínio foi desativado (agosto/2026) na migração
+# para o portal unificado dados.gov.br — mas o próprio dados.gov.br ainda
+# referencia o link morto no metadado do recurso (migração incompleta do
+# lado do governo; confirmado em agosto/2026). Como a série está encerrada
+# desde 2022 e o arquivo não muda mais, usamos um snapshot fixo do Wayback
+# Machine como fonte estável em vez do link ao vivo.
 #
 # Planilha única com headers:
 #   UF          :: String — nome POR EXTENSO ("Pernambuco"), não sigla
@@ -20,6 +24,7 @@
 const SINESP_FIRST_YEAR = 2015
 const SINESP_LAST_YEAR = 2022
 const SINESP_UF_URL =
+    "https://web.archive.org/web/20251119174505id_/" *
     "https://dados.mj.gov.br/dataset/210b9ae2-21fc-4986-89c6-2006eb4db247/" *
     "resource/feeae05e-faba-406c-8a4a-512aec91a9d1/download/" *
     "indicadoressegurancapublicauf.xlsx"
