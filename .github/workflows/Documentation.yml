@@ -30,5 +30,6 @@ jobs:
       - name: Build e deploy (gh-pages)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
           DOCS_DEPLOY_TAG: ${{ inputs.tag }}
         run: julia --project=docs docs/make.jl
