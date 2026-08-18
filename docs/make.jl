@@ -28,4 +28,22 @@ makedocs(
     ],
 )
 
-deploydocs(repo = "github.com/dantebertuzzi/DeBRief.jl", devbranch = "main")
+# Republicar a doc de uma tag já existente: rode o workflow Documentation
+# manualmente informando a tag (ver Documentation.yml). É preciso porque as tags
+# criadas pelo TagBot com o GITHUB_TOKEN não disparam workflows sozinhas.
+deploy_tag = get(ENV, "DOCS_DEPLOY_TAG", "")
+deploy_config = if isempty(deploy_tag)
+    Documenter.auto_detect_deploy_system()
+else
+    Documenter.GitHubActions(
+        ENV["GITHUB_REPOSITORY"],
+        ENV["GITHUB_EVENT_NAME"],
+        "refs/tags/" * deploy_tag,
+    )
+end
+
+deploydocs(
+    repo = "github.com/dantebertuzzi/DeBRief.jl",
+    devbranch = "main",
+    deploy_config = deploy_config,
+)

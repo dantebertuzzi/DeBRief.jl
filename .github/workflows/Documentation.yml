@@ -4,6 +4,14 @@ on:
     branches: [main]
     tags: ['*']
   pull_request:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Tag a republicar (ex.: v0.1.2). Deixe em branco para publicar a doc
+          de desenvolvimento (dev) a partir da ref escolhida.
+        required: false
+        default: ''
 permissions:
   contents: write
   pull-requests: read
@@ -22,4 +30,5 @@ jobs:
       - name: Build e deploy (gh-pages)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCS_DEPLOY_TAG: ${{ inputs.tag }}
         run: julia --project=docs docs/make.jl
