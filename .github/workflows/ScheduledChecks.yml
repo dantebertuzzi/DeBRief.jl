@@ -14,11 +14,11 @@ jobs:
     name: Fontes da Sinesp ainda respondem?
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: "1"
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - name: Roda a suíte com DEBRIEF_ONLINE_TESTS=true (com retry)
         env:
@@ -37,11 +37,11 @@ jobs:
     name: Links citados no README e na documentação
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: "1"
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - name: scripts/testes/verifica_links.jl (com retry)
         run: |
@@ -60,11 +60,11 @@ jobs:
     name: Testes com dependências mais recentes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
         with:
           version: "1"
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
       - name: Atualiza dependências para as versões mais recentes compatíveis
         run: julia --project -e 'using Pkg; Pkg.update()'
       - uses: julia-actions/julia-buildpkg@v1
