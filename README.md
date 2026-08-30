@@ -171,6 +171,12 @@ DeBRief is analogous in purpose to the R package
 [BrazilCrime](https://cran.r-project.org/package=BrazilCrime), but written as
 an idiomatic Julia package rather than a line-by-line translation.
 
+## Citation
+
+If DeBRief.jl supports your research, please cite the archived release.
+Machine-readable metadata lives in [CITATION.cff](CITATION.cff); GitHub's
+"Cite this repository" button renders BibTeX and APA from it.
+
 ## Development
 
 ```julia

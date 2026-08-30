@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use DeBRief.jl in your research, please cite it as below."
+type: software
+title: "DeBRief.jl: a Julia client for Brazilian public-security statistics (Sinesp/MJSP)"
+abstract: >-
+  DeBRief.jl downloads, caches and normalizes the crime and violence
+  statistics published by Brazil's Ministry of Justice and Public Security
+  (MJSP) through the Sinesp platform: the Sinesp-VDE monthly,
+  municipality-level database (2015-present, 28 indicators) and the classic
+  state-level series (2015-2022, nine typologies). It provides a single
+  stable long-format schema, accent- and case-insensitive filters, disk
+  caching, and per-100k rates from IBGE/SIDRA population estimates.
+authors:
+  - family-names: Bertuzzi
+    given-names: Dante
+version: 0.1.3
+date-released: "2026-08-30"
+license: MIT
+repository-code: "https://github.com/dantebertuzzi/DeBRief.jl"
+url: "https://dantebertuzzi.github.io/DeBRief.jl/stable/"
+keywords:
+  - Julia
+  - Brazil
+  - crime statistics
+  - public security
+  - Sinesp
+  - open data
