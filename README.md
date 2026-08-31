@@ -5,6 +5,7 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![docs: stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://dantebertuzzi.github.io/DeBRief.jl/stable/)
 [![docs: dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://dantebertuzzi.github.io/DeBRief.jl/dev/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.22182421.svg)](https://doi.org/10.5281/zenodo.22182421)
 
 *A debrief on Brazilian crime data — with **BR** right in the middle.*
 
@@ -171,11 +172,88 @@ DeBRief is analogous in purpose to the R package
 [BrazilCrime](https://cran.r-project.org/package=BrazilCrime), but written as
 an idiomatic Julia package rather than a line-by-line translation.
 
-## Citation
+## How to cite
 
-If DeBRief.jl supports your research, please cite the archived release.
-Machine-readable metadata lives in [CITATION.cff](CITATION.cff); GitHub's
-"Cite this repository" button renders BibTeX and APA from it.
+If DeBRief.jl was part of your analysis pipeline, cite **two things
+separately**: the software and the data. They are distinct objects with
+distinct responsibilities — the package answers for downloading, normalizing
+and typing, the MJSP answers for the content.
+
+### 1. The software
+
+The repository ships a [`CITATION.cff`](CITATION.cff), which GitHub reads
+natively: the **"Cite this repository"** button in the sidebar generates ready
+APA and BibTeX. A [`CITATION.bib`](CITATION.bib) is also provided:
+
+```bibtex
+@software{bertuzzi_debrief_2026,
+  author  = {Bertuzzi, Dante},
+  title   = {{DeBRief.jl}: a {Julia} client for {Brazilian} public-security
+             statistics ({Sinesp}/{MJSP})},
+  year    = {2026},
+  version = {0.1.3},
+  doi     = {10.5281/zenodo.22182421},
+  url     = {https://github.com/dantebertuzzi/DeBRief.jl},
+  note    = {Julia package}
+}
+```
+
+**Cite the version you used**, not "the latest". The normalization layer is
+part of the result: which typology labels map onto which canonical name, and
+how a layout change in an upstream spreadsheet is absorbed, can differ between
+releases. Run `pkg> status DeBRief` and use the number it prints.
+
+### 2. The Sinesp/MJSP data
+
+The MJSP is the primary source and must be cited as such, **with the
+extraction date** — states revise their figures retroactively, and the same
+query run on different dates can return different numbers:
+
+> BRASIL. Ministério da Justiça e Segurança Pública. *Sinesp — Dados
+> Nacionais de Segurança Pública*: base de dados. Brasília: MJSP, 2026.
+> Available at: https://www.gov.br/mj/pt-br/acesso-a-informacao/dados-abertos/ocorrencias-criminais-sinesp.
+> Accessed: 30 Aug. 2026.
+
+State **which of the two series** you used — they are not interchangeable:
+`fetch_vde` (Sinesp-VDE, 2015–present, monthly, municipality-level) or
+`fetch_sinesp` (classic series, 2015–2022, annual, state-level). See
+[docs/src/harmonization.md](docs/src/harmonization.md). If you reported
+`rate_100k`, also cite the population denominator: IBGE/SIDRA table 6579
+(annual municipal population estimates).
+
+### 3. Reproducibility
+
+So that someone else reaches your number, record in the paper or supplementary
+material: the **DeBRief.jl and Julia versions**; the `Project.toml` and
+`Manifest.toml` of the environment (the `Manifest.toml` pins the whole
+dependency tree and is what makes the environment reconstructible with
+`Pkg.instantiate()`); the **extraction date** of the Sinesp files (and whether
+you passed `refresh = true` or worked from an older cache); which series you
+queried; and, for rates, the IBGE estimate year.
+
+### The standards behind this
+
+| Standard | What it establishes |
+|---|---|
+| [FORCE11 — Software Citation Principles](https://force11.org/info/software-citation-principles-published-2016/) | Software is a citable research product. Six principles: importance, credit, unique identification, persistence, accessibility and **specificity** (cite the exact version). |
+| [Citation File Format (CFF) 1.2.0](https://citation-file-format.github.io/) | Machine-readable citation metadata. What GitHub and Zenodo consume. |
+| ABNT NBR 6023:2018 | References in Brazilian publications; requires `Disponível em` + `Acesso em` for electronic documents. |
+| [Zenodo + GitHub](https://docs.github.com/en/repositories/archiving-a-github-repository/referencing-and-citing-content) | Mints a persistent DOI per release, plus a *concept DOI* always pointing at the newest version. |
+
+**The DOIs of this project**: the repository is connected to
+[Zenodo](https://zenodo.org), so every release is archived and gets a
+persistent identifier — the citation no longer depends on the GitHub URL
+surviving a rename or a transfer. Two DOIs coexist, and they are not
+interchangeable:
+
+| DOI | What it identifies |
+|---|---|
+| [10.5281/zenodo.22182421](https://doi.org/10.5281/zenodo.22182421) | *Concept DOI* — the project as a whole. Always resolves to the newest version; it is what the badge at the top of this README points at. |
+| one per release | Each archived version gets its own — 0.1.3 is [10.5281/zenodo.22182422](https://doi.org/10.5281/zenodo.22182422). All of them are listed on the [Zenodo page](https://doi.org/10.5281/zenodo.22182421). |
+
+The BibTeX above carries the concept DOI, so it keeps working across releases.
+**In a paper, swap it for the DOI of the version you used**: the concept DOI
+says which project you used, the version DOI says which code actually ran.
 
 ## Development
 

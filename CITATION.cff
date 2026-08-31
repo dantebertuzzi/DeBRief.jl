@@ -13,9 +13,20 @@ abstract: >-
 authors:
   - family-names: Bertuzzi
     given-names: Dante
+    email: dantesbertuzzi@gmail.com
 version: 0.1.3
 date-released: "2026-08-30"
 license: MIT
+doi: 10.5281/zenodo.22182421
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.22182421
+    description: >-
+      Concept DOI — always resolves to the most recent
+      version of DeBRief.jl.
+  - type: doi
+    value: 10.5281/zenodo.22182422
+    description: DOI of version 0.1.3.
 repository-code: "https://github.com/dantebertuzzi/DeBRief.jl"
 url: "https://dantebertuzzi.github.io/DeBRief.jl/stable/"
 keywords:
