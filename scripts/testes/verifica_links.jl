@@ -9,10 +9,11 @@ const MD_ROOTS = [joinpath(ROOT, "README.md"), joinpath(ROOT, "docs")]
 
 function extrai_urls(texto::String)
     urls = String[]
-    for m in eachmatch(r"https?://[^\s\)\]\"\']+|ftp://[^\s\)\]\"\']+", texto)
+    # parênteses, colchetes, chaves, aspas e crase delimitam a URL (Markdown,
+    # BibTeX, código) e nunca fazem parte dela.
+    for m in eachmatch(r"(?:https?|ftp)://[^\s()\[\]{}<>\"'`]+", texto)
         url = m.match
-        url = replace(url, r"[\)\]\"\'\,\.\;]*$" => "")
-        url = replace(url, r"`$" => "")
+        url = replace(url, r"[\,\.\;]*$" => "")
         push!(urls, url)
     end
     return unique(urls)
