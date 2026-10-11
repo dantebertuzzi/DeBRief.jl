@@ -60,15 +60,32 @@ end
 _sidra_ok(json::AbstractString) =
     occursin("\"D1C\"", json) && endswith(rstrip(json), "]")
 
+# Memo em memória por sessão, (nível, ano pedido) -> linhas: evita reler e
+# reparsear (regex) o JSON do SIDRA a cada fetch com `relative`, filtro por
+# código IBGE ou `geometry`. Esvaziado por `clear_cache()`.
+const _SidraRows = Vector{NamedTuple{(:code, :name, :value),Tuple{String,String,Int}}}
+const _POPULATION_MEMO = Dict{Tuple{Symbol,Int},_SidraRows}()
+const _POPULATION_LOCK = ReentrantLock()
+
 """
     _population(level, year; progress = true) -> Vector{NamedTuple}
 
 Download (or read from cache) the SIDRA population estimates for `level`
 (`:state` or `:municipality`) and `year`, with fallback to neighboring years
 when the requested one is not published (e.g. the 2022 census year has no
-estimate in table 6579). Returns the parsed triples. Internal helper.
+estimate in table 6579). Results are memoized in memory for the session.
+Returns the parsed triples. Internal helper.
 """
 function _population(level::Symbol, year::Integer; progress::Bool = true)
+    key = (level, Int(year))
+    rows = lock(() -> get(_POPULATION_MEMO, key, nothing), _POPULATION_LOCK)
+    rows === nothing || return rows
+    rows = _fetch_population(level, year; progress)
+    lock(() -> (_POPULATION_MEMO[key] = rows), _POPULATION_LOCK)
+    return rows
+end
+
+function _fetch_population(level::Symbol, year::Integer; progress::Bool = true)
     # Fallback: ano pedido, depois vizinhos — o SIDRA não publica estimativa
     # para todos os anos (2022 é Censo) nem para anos ainda não fechados.
     for (i, y) in enumerate((year, year - 1, year + 1, year - 2))
@@ -114,6 +131,11 @@ function _population_by_uf(year::Integer; progress::Bool = true)
     return Dict(UF_NAME_TO_ABBREV[normalize_key(r.name)] => r.value
                 for r in rows if haskey(UF_NAME_TO_ABBREV, normalize_key(r.name)))
 end
+
+# Chave "nome normalizado|UF" de cada linha de um DataFrame do VDE, a mesma
+# usada pelos lookups abaixo; normaliza cada nome distinto uma única vez
+_municipality_keys_by_row(df::DataFrame) =
+    _map_unique(normalize_key, df.municipality) .* "|" .* df.state
 
 # Dict "nome normalizado|UF" => população (nível municipal)
 function _population_by_municipality(year::Integer; progress::Bool = true)

@@ -95,7 +95,7 @@ function _assemble_sinesp(path::AbstractString;
     if relative
         years_needed = unique(hasproperty(df, :year) ? df.year : Dates.year.(df.date))
         pops = Dict(y => _population_by_uf(y; progress) for y in years_needed)
-        _add_rate!(df, pops, row -> row.state)
+        _add_rate!(df, pops, df.state)
     end
 
     if geometry

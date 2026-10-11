@@ -27,10 +27,11 @@ name + UF. Internal helper used by the geo extension join.
 """
 function _add_municipality_code!(df::DataFrame; progress::Bool = true)
     _, byname = _municipality_lookup(; progress)
+    keys = _municipality_keys_by_row(df)
     codes = Vector{Union{Missing,Int}}(undef, nrow(df))
     misses = 0
     for i in 1:nrow(df)
-        code = get(byname, normalize_key(df.municipality[i]) * "|" * df.state[i], nothing)
+        code = get(byname, keys[i], nothing)
         codes[i] = code === nothing ? missing : code
         code === nothing && (misses += 1)
     end

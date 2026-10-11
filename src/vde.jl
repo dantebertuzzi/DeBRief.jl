@@ -30,14 +30,13 @@ const VDE_FIRST_YEAR = 2015
 const VDE_URL_PREFIX = "https://www.gov.br/mj/pt-br/assuntos/sua-seguranca/" *
     "seguranca-publica/estatistica/download/dnsp-base-de-dados/"
 
+# Downloads simultâneos em fetch_vde — modesto para não sobrecarregar o gov.br
+const VDE_DOWNLOAD_TASKS = 4
+
 _vde_url(year::Integer) = VDE_URL_PREFIX * "bancovde-$(year).xlsx/@@download/file"
 
 # Colunas obrigatórias para considerar o layout reconhecido
 const _VDE_REQUIRED = (:uf, :municipio, :evento, :data_referencia)
-
-# Colunas de valor por unidade de medida (ver normalize.jl)
-_value_column(measure::Symbol) = measure === :victims ? :total_vitima :
-                                 measure === :kg      ? :total_peso   : :total
 
 # ---------------------------------------------------------------------------
 # Parsing de um arquivo anual
@@ -79,7 +78,32 @@ function _parse_vde(path::AbstractString, year::Integer)
         hasproperty(raw, c) || (raw[!, c] = fill(missing, nrow(raw)))
     end
 
-    n = nrow(raw)
+    # Colunas extraídas UMA vez e passadas por uma function barrier: o laço
+    # linha a linha não paga lookup de coluna do DataFrame a cada célula
+    cols = (; uf = raw.uf, municipio = raw.municipio, evento = raw.evento,
+            data_referencia = raw.data_referencia, feminino = raw.feminino,
+            masculino = raw.masculino, nao_informado = raw.nao_informado,
+            total = raw.total, total_peso = raw.total_peso,
+            total_vitima = raw.total_vitima)
+    df = _vde_rows(cols, nrow(raw), year)
+
+    # Soma linhas duplicadas de um mesmo município-mês-tipologia (nota oficial
+    # do MJSP para Tentativa de Homicídio e Estupro; aplicada de forma geral)
+    gd = groupby(df, [:date, :state, :municipality, :typology, :category, :measure])
+    out = combine(gd,
+                  :value => _sumskip => :value,
+                  :female => _sumskip => :female,
+                  :male => _sumskip => :male,
+                  :unspecified => _sumskip => :unspecified)
+    return _narrow_value!(out)
+end
+
+# Valor da linha `i` na coluna de valor da unidade `measure` (ver normalize.jl)
+_value_cell(cols, measure::Symbol, i::Int) =
+    measure === :victims ? cols.total_vitima[i] :
+    measure === :kg      ? cols.total_peso[i]   : cols.total[i]
+
+function _vde_rows(cols::NamedTuple, n::Int, year::Integer)
     date = Vector{Date}(undef, n)
     state = Vector{String}(undef, n)
     municipality = Vector{String}(undef, n)
@@ -99,35 +123,35 @@ function _parse_vde(path::AbstractString, year::Integer)
     typ_cache = Dict{String,Union{Typology,Nothing}}()
 
     for i in 1:n
-        date[i] = _refmonth(raw.data_referencia[i])
+        date[i] = _refmonth(cols.data_referencia[i])
         # UF vem como sigla; se algum ano trouxer o nome por extenso, resolve igual
-        ufraw = string(raw.uf[i])
+        ufraw = string(cols.uf[i])
         state[i] = get!(() -> _resolve_uf(ufraw), uf_cache, ufraw)
-        mraw = string(raw.municipio[i])
+        mraw = string(cols.municipio[i])
         municipality[i] = get!(() -> String(strip(mraw)), mun_cache, mraw)
-        eraw = string(raw.evento[i])
+        eraw = string(cols.evento[i])
         typ = get!(() -> _canonical_typology(eraw, year), typ_cache, eraw)
         if typ === nothing
             # Indicador desconhecido (compatibilidade futura): mantém o nome
             # bruto, categoria "other" e escolhe a coluna de valor preenchida
-            typology[i] = String(strip(string(raw.evento[i])))
+            typology[i] = String(strip(eraw))
             category[i] = "other"
-            measure[i] = !ismissing(raw.total_vitima[i]) ? :victims :
-                         !ismissing(raw.total_peso[i])   ? :kg : :occurrences
+            measure[i] = !ismissing(cols.total_vitima[i]) ? :victims :
+                         !ismissing(cols.total_peso[i])   ? :kg : :occurrences
         else
             typology[i] = typ.name
             category[i] = typ.category
             measure[i] = typ.measure
         end
 
-        female[i] = _int(raw.feminino[i])
-        male[i] = _int(raw.masculino[i])
-        unspecified[i] = _int(raw.nao_informado[i])
+        female[i] = _int(cols.feminino[i])
+        male[i] = _int(cols.masculino[i])
+        unspecified[i] = _int(cols.nao_informado[i])
 
-        vcol = _value_column(measure[i])
-        if measure[i] === :kg
-            value[i] = _float(raw[i, vcol])
-        elseif measure[i] === :victims || measure[i] === :people
+        m = measure[i]
+        if m === :kg
+            value[i] = _float(_value_cell(cols, m, i))
+        elseif m === :victims || m === :people
             # Nos formulários de vítimas e de desaparecidos/localizados a
             # fonte oscila entre preencher a coluna-alvo, a alternativa
             # (total x total_vitima) ou APENAS as colunas por sexo, deixando
@@ -135,34 +159,23 @@ function _parse_vde(path::AbstractString, year::Integer)
             # onde `total` de Pessoa Desaparecida vem 0 no país inteiro.
             # Usa a primeira contagem não-vazia e não-zero da cadeia; se tudo
             # for zero, zero é o valor legítimo (painel completo).
-            alt = vcol === :total_vitima ? :total : :total_vitima
-            sexsum = _sumskip(Union{Missing,Int}[female[i], male[i], unspecified[i]])
-            value[i] = _first_count(_int(raw[i, vcol]), _int(raw[i, alt]), sexsum)
+            alt = m === :victims ? cols.total[i] : cols.total_vitima[i]
+            sexsum = _sumskip((female[i], male[i], unspecified[i]))
+            value[i] = _first_count(_int(_value_cell(cols, m, i)), _int(alt), sexsum)
         else
-            value[i] = _int(raw[i, vcol])
+            value[i] = _int(_value_cell(cols, m, i))
         end
     end
 
-    # Colunas categóricas em PooledArray: nos anos grandes (centenas de
-    # milhares de linhas) isso reduz memória em ordem de grandeza e acelera
-    # o groupby/vcat do pipeline
-    df = DataFrame(; date,
-                   state = PooledArray(state),
-                   municipality = PooledArray(municipality),
-                   typology = PooledArray(typology),
-                   category = PooledArray(category),
-                   measure = PooledArray(measure),
-                   value, female, male, unspecified)
-
-    # Soma linhas duplicadas de um mesmo município-mês-tipologia (nota oficial
-    # do MJSP para Tentativa de Homicídio e Estupro; aplicada de forma geral)
-    gd = groupby(df, [:date, :state, :municipality, :typology, :category, :measure])
-    out = combine(gd,
-                  :value => _sumskip => :value,
-                  :female => _sumskip => :female,
-                  :male => _sumskip => :male,
-                  :unspecified => _sumskip => :unspecified)
-    return _narrow_value!(out)
+    # Colunas categóricas em PooledArray: reduz memória, acelera o groupby e
+    # permite filtrar por valor distinto (_map_unique) em vez de linha a linha
+    return DataFrame(; date,
+                     state = PooledArray(state),
+                     municipality = PooledArray(municipality),
+                     typology = PooledArray(typology),
+                     category = PooledArray(category),
+                     measure = PooledArray(measure),
+                     value, female, male, unspecified)
 end
 
 # ---------------------------------------------------------------------------
@@ -213,6 +226,15 @@ end
 # Filtros e pós-processamento (compartilhados com fetch_sinesp onde faz sentido)
 
 _asvector(x) = x isa AbstractVector ? collect(x) : [x]
+
+# Aplica `f` uma vez por valor DISTINTO de `v` e espalha o resultado pelas
+# linhas: em PooledArray avalia sobre o pool e indexa pelos refs; em vetores
+# comuns memoiza num Dict. Evita normalize_key (Unicode) linha a linha.
+function _map_unique(f, v::AbstractVector)
+    v isa PooledArray && return map(f, v.pool)[v.refs]
+    memo = Dict(x => f(x) for x in unique(v))
+    return [memo[x] for x in v]
+end
 
 function _validate_years(year, first_year::Int, last_year::Int, source::String)
     year === nothing && return collect(first_year:last_year)
@@ -282,14 +304,14 @@ function _apply_granularity(df::DataFrame, granularity::Symbol; keys::Vector{Sym
     return sort!(out, vcat(keys, :year))
 end
 
-# Adiciona rate_100k usando um lookup (chave -> população). `keyfun` extrai a
-# chave de cada linha; `yearfun` o ano de referência da população.
-function _add_rate!(df::DataFrame, pops::Dict{Int,<:AbstractDict}, keyfun::Function)
+# Adiciona rate_100k usando um lookup por ano (chave -> população); `keys`
+# traz a chave de cada linha, já pré-calculada pelo chamador.
+function _add_rate!(df::DataFrame, pops::Dict{Int,<:AbstractDict}, keys::AbstractVector)
     yearcol = hasproperty(df, :year) ? df.year : Dates.year.(df.date)
     rate = Vector{Union{Missing,Float64}}(undef, nrow(df))
     misses = 0
     for i in 1:nrow(df)
-        pop = get(pops[yearcol[i]], keyfun(df[i, :]), nothing)
+        pop = get(pops[yearcol[i]], keys[i], nothing)
         if pop === nothing || ismissing(df.value[i])
             rate[i] = missing
             pop === nothing && (misses += 1)
@@ -344,22 +366,22 @@ function _assemble_vde(paths::Dict{Int,String};
         d = _parse_vde_cached(p, y; progress)
         # Ordem dos filtros: dos mais seletivos/baratos para os mais caros
         years !== nothing && subset!(d, :date => ByRow(dt -> Dates.year(dt) in years))
-        states !== nothing && subset!(d, :state => ByRow(in(states)))
+        states !== nothing && subset!(d, :state => (v -> _map_unique(in(states), v)))
         if munkeys !== nothing
             # Antes de filtrar: registra tipologias reportadas apenas como
             # agregado estadual, para o diagnóstico de zero linhas abaixo
-            ni = Set(m for m in unique(d.municipality)
-                     if normalize_key(m) == "nao informado")
-            if !isempty(ni)
-                nityps = unique(d.typology[map(in(ni), d.municipality)])
+            isni = _map_unique(m -> normalize_key(m) == "nao informado", d.municipality)
+            if any(isni)
+                nityps = unique(d.typology[isni])
                 union!(state_only,
                        typs === nothing ? nityps : intersect(nityps, typs))
             end
-            subset!(d, :municipality => ByRow(m -> normalize_key(m) in munkeys))
+            subset!(d, :municipality =>
+                           (ms -> _map_unique(m -> normalize_key(m) in munkeys, ms)))
         end
         typs !== nothing && union!(seen, unique(d.typology))
-        typs !== nothing && subset!(d, :typology => ByRow(in(typs)))
-        cats !== nothing && subset!(d, :category => ByRow(in(cats)))
+        typs !== nothing && subset!(d, :typology => (v -> _map_unique(in(typs), v)))
+        cats !== nothing && subset!(d, :category => (v -> _map_unique(in(cats), v)))
         push!(parts, d)
         # Libera o arquivo anterior antes de abrir o próximo ano grande
         length(paths) > 1 && GC.gc()
@@ -406,7 +428,7 @@ function _assemble_vde(paths::Dict{Int,String};
     if relative
         years_needed = unique(hasproperty(df, :year) ? df.year : Dates.year.(df.date))
         pops = Dict(y => _population_by_municipality(y; progress) for y in years_needed)
-        _add_rate!(df, pops, row -> normalize_key(row.municipality) * "|" * row.state)
+        _add_rate!(df, pops, _municipality_keys_by_row(df))
     end
 
     if geometry
@@ -496,18 +518,26 @@ function fetch_vde(; state = nothing, municipality = nothing, year = nothing,
                    geometry::Bool = false, refresh::Bool = false,
                    progress::Bool = true)
     years = _validate_years(year, VDE_FIRST_YEAR, Dates.year(Dates.today()), "Sinesp-VDE")
-    paths = Dict{Int,String}()
-    for y in years
+    # Downloads concorrentes (I/O-bound): a primeira carga completa baixa
+    # ~11 arquivos de ~28 MB de um servidor lento
+    results = asyncmap(years; ntasks = VDE_DOWNLOAD_TASKS) do y
         try
-            paths[y] = _ensure_file(_vde_url(y), "vde", "bancovde-$(y).xlsx";
-                                    refresh, progress)
+            y => _ensure_file(_vde_url(y), "vde", "bancovde-$(y).xlsx";
+                              refresh, progress)
         catch err
+            err isa InterruptException && rethrow()
+            y => err
+        end
+    end
+    paths = Dict{Int,String}()
+    for (y, r) in results
+        if r isa String
+            paths[y] = r
+        elseif y == Dates.year(Dates.today()) && year === nothing
             # O arquivo do ano corrente pode ainda não existir no início do ano
-            if y == Dates.year(Dates.today()) && year === nothing
-                @warn "DeBRief: bancovde-$(y).xlsx not available yet; skipping." 
-            else
-                rethrow(err)
-            end
+            @warn "DeBRief: bancovde-$(y).xlsx not available yet; skipping."
+        else
+            throw(r)
         end
     end
     isempty(paths) && error("DeBRief: no VDE files could be downloaded.")

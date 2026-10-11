@@ -36,6 +36,7 @@ function clear_cache()
     # Remove e recria a raiz — mais simples do que iterar arquivo a arquivo
     rm(root; force = true, recursive = true)
     mkpath(root)
+    lock(() -> empty!(_POPULATION_MEMO), _POPULATION_LOCK)
     return nothing
 end
 

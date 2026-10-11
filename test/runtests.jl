@@ -60,6 +60,12 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
         @test names(info) == ["file", "mb"]
         @test all(>=(0), info.mb)
 
+        # _map_unique: mesmo resultado em PooledArray e em Vector comum
+        v = ["Recife", "São Paulo", "Recife", "Bom Jesus"]
+        f = DeBRief.normalize_key
+        @test DeBRief._map_unique(f, v) == f.(v)
+        @test DeBRief._map_unique(f, DeBRief.PooledArray(v)) == f.(v)
+
         # Rollback do .part após resposta de erro HTTP
         mktempdir() do dir
             tmp = joinpath(dir, "f.xlsx.part")
@@ -156,6 +162,7 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
         df2 = DeBRief._parse_vde_cached(VDE_FIXTURE[2023], 2023; progress = false)
         @test isequal(df1, df2)
         @test isequal(df1, DeBRief._parse_vde(VDE_FIXTURE[2023], 2023))
+        @test df1.municipality isa DeBRief.PooledArray   # pool sobrevive ao combine
         # O pipeline de montagem lê do cache serializado (não reparseia o XLSX)
         @test_logs min_level = Base.CoreLogging.Info begin
             DeBRief._assemble_vde(VDE_FIXTURE; state = "PE", progress = true)
@@ -258,8 +265,8 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
                                    typology = "Homicídio doloso",
                                    granularity = :year, progress = false)
         pops = Dict(2023 => Dict("recife|PE" => 1_488_920))
-        DeBRief._add_rate!(df, pops, row -> DeBRief.normalize_key(row.municipality) *
-                                            "|" * row.state)
+        @test DeBRief._municipality_keys_by_row(df) == fill("recife|PE", nrow(df))
+        DeBRief._add_rate!(df, pops, DeBRief._municipality_keys_by_row(df))
         @test hasproperty(df, :rate_100k)
         @test eltype(df.rate_100k) == Float64
         @test df.rate_100k[1] ≈ df.value[1] / 1_488_920 * 100_000
