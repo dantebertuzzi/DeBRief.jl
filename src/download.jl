@@ -29,6 +29,17 @@ function _looks_valid(path::AbstractString)
     end
 end
 
+# Restaura o .part ao tamanho que tinha antes da requisição (descarta bytes
+# anexados por uma resposta de erro); sem parcial prévio, apaga o arquivo.
+function _rollback_part(tmp::AbstractString, offset::Integer)
+    if offset <= 0
+        rm(tmp; force = true)
+    elseif isfile(tmp) && filesize(tmp) > offset
+        open(io -> truncate(io, offset), tmp, "r+")
+    end
+    return nothing
+end
+
 """
     _download(url, dest; cfg = DownloadConfig()) -> String
 
@@ -63,8 +74,19 @@ function _download(url::AbstractString, dest::AbstractString;
                 rm(tmp; force = true)
                 error("server ignored the Range header; restarting from scratch")
             end
-            resp.status in (200, 206) ||
+            if offset > 0 && resp.status == 416
+                # Range fora do arquivo: o .part já está completo ou é de uma
+                # versão anterior do recurso. Manter o parcial faria TODAS as
+                # tentativas (e chamadas futuras) falharem -> recomeça do zero
+                rm(tmp; force = true)
+                error("server rejected the resume range (HTTP 416); restarting from scratch")
+            end
+            if !(resp.status in (200, 206))
+                # O corpo da resposta de erro foi gravado no .part: desfaz para
+                # não retomar a partir de uma página de erro na próxima tentativa
+                _rollback_part(tmp, offset)
                 error("unexpected HTTP status $(resp.status)")
+            end
             filesize(tmp) >= cfg.min_size ||
                 error("downloaded file is suspiciously small ($(filesize(tmp)) bytes)")
             if !_looks_valid(tmp)

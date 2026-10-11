@@ -59,6 +59,18 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
         @test info isa DataFrame
         @test names(info) == ["file", "mb"]
         @test all(>=(0), info.mb)
+
+        # Rollback do .part após resposta de erro HTTP
+        mktempdir() do dir
+            tmp = joinpath(dir, "f.xlsx.part")
+            write(tmp, "PK" * "x"^98 * "<html>erro 503</html>")
+            DeBRief._rollback_part(tmp, 100)
+            @test filesize(tmp) == 100
+            DeBRief._rollback_part(tmp, 100)          # idempotente
+            @test filesize(tmp) == 100
+            DeBRief._rollback_part(tmp, 0)            # sem parcial prévio: apaga
+            @test !isfile(tmp)
+        end
     end
 
     @testset "type coercions" begin
@@ -138,13 +150,16 @@ const SINESP_FIXTURE = joinpath(FIX, "sinesp_uf_fixture.xlsx")
 
     @testset "parsed-year disk cache" begin
         df1 = DeBRief._parse_vde_cached(VDE_FIXTURE[2023], 2023; progress = false)
-        key = "bancovde-2023-v$(DeBRief.PARSER_VERSION)-" *
-              "$(filesize(VDE_FIXTURE[2023])).jls"
+        key = DeBRief._parsed_cache_key(VDE_FIXTURE[2023], 2023)
         @test isfile(DeBRief.cache_path("vde_parsed", key))
         # Segunda chamada vem do cache serializado e deve ser idêntica
         df2 = DeBRief._parse_vde_cached(VDE_FIXTURE[2023], 2023; progress = false)
         @test isequal(df1, df2)
         @test isequal(df1, DeBRief._parse_vde(VDE_FIXTURE[2023], 2023))
+        # O pipeline de montagem lê do cache serializado (não reparseia o XLSX)
+        @test_logs min_level = Base.CoreLogging.Info begin
+            DeBRief._assemble_vde(VDE_FIXTURE; state = "PE", progress = true)
+        end
     end
 
     @testset "VDE assembly, filters and granularity (fixture)" begin

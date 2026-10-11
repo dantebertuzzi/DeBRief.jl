@@ -45,10 +45,10 @@ _value_column(measure::Symbol) = measure === :victims ? :total_vitima :
 # Leitura em streaming (enable_cache = false): o cache de células do XLSX.jl
 # multiplica por várias vezes o tamanho dos bancovde grandes na RAM e é a
 # causa clássica de travamento ao carregar todos os anos de uma vez.
-function _read_first_sheet(path::AbstractString)
+function _read_first_sheet(path::AbstractString; infer_eltypes::Bool = false)
     XLSX.openxlsx(path; enable_cache = false) do xf
         sheet = xf[first(XLSX.sheetnames(xf))]
-        DataFrame(XLSX.gettable(sheet; infer_eltypes = true))
+        DataFrame(XLSX.gettable(sheet; infer_eltypes))
     end
 end
 
@@ -62,11 +62,9 @@ typology) rows as instructed by the MJSP. Internal helper, unit-tested
 offline against the fixture in `test/data/`.
 """
 function _parse_vde(path::AbstractString, year::Integer)
-    xf = XLSX.readxlsx(path)
-    sheet = xf[first(XLSX.sheetnames(xf))]
     # Sem infer_eltypes: a inferência de tipos do XLSX.jl é muito cara nos
     # arquivos grandes e as coerções abaixo já tratam célula a célula
-    raw = DataFrame(XLSX.gettable(sheet))
+    raw = _read_first_sheet(path)
     rename!(raw, [n => _norm_header(n) for n in names(raw)])
 
     # Guarda contra mudança de layout: erro claro listando o que foi achado
@@ -180,14 +178,19 @@ const PARSER_VERSION = 2  # v2: cadeia de fallback p/ :victims e :people
     _parse_vde_cached(path, year; progress = true) -> DataFrame
 
 Memoized-on-disk version of [`_parse_vde`](@ref): the normalized `DataFrame`
-is serialized under the package scratch space, keyed by year, file size and
-`PARSER_VERSION`. Stale or incompatible caches (e.g. written by another
+is serialized under the package scratch space, keyed by year, file size,
+file modification time and `PARSER_VERSION`. Stale or incompatible caches (e.g. written by another
 Julia version) are transparently discarded and rebuilt. Internal helper.
 """
+# Tamanho + mtime: um `refresh` que traga um arquivo novo de MESMO tamanho
+# (o bancovde do ano corrente é republicado todo mês) invalida o cache
+_parsed_cache_key(path::AbstractString, year::Integer) =
+    "bancovde-$(year)-v$(PARSER_VERSION)-$(filesize(path))-" *
+    "$(round(Int, mtime(path))).jls"
+
 function _parse_vde_cached(path::AbstractString, year::Integer;
                            progress::Bool = true)
-    key = "bancovde-$(year)-v$(PARSER_VERSION)-$(filesize(path)).jls"
-    cached = cache_path("vde_parsed", key)
+    cached = cache_path("vde_parsed", _parsed_cache_key(path, year))
     if isfile(cached)
         try
             return deserialize(cached)::DataFrame
@@ -338,8 +341,7 @@ function _assemble_vde(paths::Dict{Int,String};
     # "NÃO INFORMADO") — cobertura municipal varia por UF/indicador/ano
     state_only = Set{String}()
     for (y, p) in sort(collect(paths); by = first)
-        progress && @info "DeBRief: parsing $(basename(p)) (large years can take a minute)"
-        d = _parse_vde(p, y)
+        d = _parse_vde_cached(p, y; progress)
         # Ordem dos filtros: dos mais seletivos/baratos para os mais caros
         years !== nothing && subset!(d, :date => ByRow(dt -> Dates.year(dt) in years))
         states !== nothing && subset!(d, :state => ByRow(in(states)))

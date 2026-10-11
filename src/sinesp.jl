@@ -36,9 +36,7 @@ Parse the classic Sinesp UF spreadsheet into the normalized long schema.
 Internal helper, unit-tested offline against the fixture in `test/data/`.
 """
 function _parse_sinesp(path::AbstractString)
-    xf = XLSX.readxlsx(path)
-    sheet = xf[first(XLSX.sheetnames(xf))]
-    raw = DataFrame(XLSX.gettable(sheet; infer_eltypes = true))
+    raw = _read_first_sheet(path; infer_eltypes = true)
     rename!(raw, [n => _norm_header(n) for n in names(raw)])
 
     required = (:uf, :tipo_crime, :ano, :mes, :ocorrencias)

@@ -90,7 +90,8 @@ function _population(level::Symbol, year::Integer; progress::Bool = true)
                     rm(dest; force = true)
                     json = ""
                 end
-            catch
+            catch err
+                err isa InterruptException && rethrow()
                 json = ""
             end
         end

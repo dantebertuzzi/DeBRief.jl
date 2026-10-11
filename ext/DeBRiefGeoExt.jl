@@ -72,7 +72,8 @@ function DeBRief._attach_geometry(df::DataFrame, level::Symbol)
         # codarea vem como String de 2 dígitos; mapeia sigla -> código p/ join
         transform!(mesh, :codarea => ByRow(c -> parse(Int, string(c))) => :_uf_code)
         transform!(df, :state => ByRow(s -> DeBRief.UF_ABBREV_TO_CODE[s]) => :_uf_code)
-        out = leftjoin(df, select!(mesh, :_uf_code, :geometry), on = :_uf_code)
+        out = leftjoin(df, select!(mesh, :_uf_code, :geometry), on = :_uf_code,
+                       order = :left)
         select!(out, Not(:_uf_code))
         return out
     elseif level === :municipality
@@ -81,7 +82,8 @@ function DeBRief._attach_geometry(df::DataFrame, level::Symbol)
         transform!(mesh, :codarea => ByRow(c -> parse(Int, string(c))) => :municipality_code)
         # matchmissing: linhas cujo código não foi resolvido ficam sem geometria
         return leftjoin(df, select!(mesh, :municipality_code, :geometry),
-                        on = :municipality_code, matchmissing = :notequal)
+                        on = :municipality_code, matchmissing = :notequal,
+                        order = :left)
     end
     error("Unknown geometry level $(repr(level)).")
 end
